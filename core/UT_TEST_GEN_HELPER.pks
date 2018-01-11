@@ -1,8 +1,8 @@
-CREATE OR REPLACE PACKAGE UT_TEST_GEN_HELPER IS
+CREATE OR REPLACE PACKAGE UT_TEST_GEN_HELPER AUTHID CURRENT_USER IS
 
 /*
- Copyright 2018 Lukasz Wasylow   
-   
+ Copyright 2018 Lukasz Wasylow
+
  Licensed under the Apache License, Version 2.0 (the "License"):
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
@@ -14,8 +14,8 @@ CREATE OR REPLACE PACKAGE UT_TEST_GEN_HELPER IS
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-*/     
-   
+*/
+
    TYPE t_duplicatehelper IS TABLE OF VARCHAR2(32) INDEX BY VARCHAR2(32);
 
    TYPE t_options_rec IS RECORD(
@@ -58,7 +58,7 @@ CREATE OR REPLACE PACKAGE UT_TEST_GEN_HELPER IS
    FUNCTION get_ut_package_body(i_methodname IN t_gen_result) RETURN VARCHAR2;
 
    FUNCTION get_ut_body_readme RETURN VARCHAR2;
-   
+
    FUNCTION get_ut_package_testinfo(i_methodname IN t_gen_result) RETURN VARCHAR2;
 
    FUNCTION get_ut_package_emptybody(i_methodname IN t_gen_result) RETURN VARCHAR2;
