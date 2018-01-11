@@ -1,0 +1,7 @@
+CREATE OR REPLACE TYPE T_OBJECTLIST AS OBJECT
+(
+   objectname   VARCHAR2(128),
+   objectowner VARCHAR2(128),
+   objecttype VARCHAR2(128)
+)
+/
