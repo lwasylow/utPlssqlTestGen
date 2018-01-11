@@ -1,5 +1,7 @@
+CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
+
 /*
- Copyright 2018 Lukasz Wasylow    
+ Copyright 2018 Lukasz Wasylow
 
  Licensed under the Apache License, Version 2.0 (the "License"):
   you may not use this file except in compliance with the License.
@@ -12,9 +14,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
- */  
-
-CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
+ */
 
    C_ENABLE_IDENTIFIERS  CONSTANT VARCHAR2(255) := 'ALTER SESSION SET PLSCOPE_SETTINGS=''IDENTIFIERS:ALL''';
    C_DISABLE_IDENTIFIERS CONSTANT VARCHAR2(255) := 'ALTER SESSION SET PLSCOPE_SETTINGS=''IDENTIFIERS:NONE''';
@@ -89,7 +89,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
       IF a_delimiter IS NULL THEN
          RETURN varchar2_tab(a_string);
       END IF;
-   
+
       LOOP
          l_delimiter_position := instr(a_string, a_delimiter, l_offset);
          IF NOT (l_delimiter_position = 1 AND l_skip_leading_delimiter) THEN
@@ -108,15 +108,15 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
    END;
 
    PROCEDURE recompile_with_scope_schema(i_schema IN VARCHAR2) IS
-   
+
    BEGIN
       EXECUTE IMMEDIATE C_UT_TEST_COMPILATION;
       EXECUTE IMMEDIATE C_ENABLE_IDENTIFIERS;
-   
+
       dbms_utility.compile_schema(SCHEMA => i_schema);
-   
+
       EXECUTE IMMEDIATE C_DISABLE_IDENTIFIERS;
-   
+
    END recompile_with_scope_schema;
 
    PROCEDURE recompile_with_scope_objects(i_run_paths IN t_objectslist) IS
@@ -124,7 +124,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
    BEGIN
       EXECUTE IMMEDIATE C_UT_TEST_COMPILATION;
       EXECUTE IMMEDIATE C_ENABLE_IDENTIFIERS;
-   
+
       FOR listofobjects IN 1 .. i_run_paths.COUNT
       LOOP
          BEGIN
@@ -143,9 +143,9 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
             EXECUTE IMMEDIATE l_sql;
          END;
       END LOOP;
-   
+
       EXECUTE IMMEDIATE C_DISABLE_IDENTIFIERS;
-   
+
    END recompile_with_scope_objects;
 
    FUNCTION clob_to_table(i_clob       IN CLOB
@@ -166,7 +166,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
          l_amount := i_max_amount - coalesce(length(l_last_line), 0);
          dbms_lob.read(i_clob, l_amount, l_offset, l_buffer);
          l_offset := l_offset + l_amount;
-      
+
          l_string_results := string_to_table(l_last_line || l_buffer, i_delimiter,
                                              l_skip_leading_delimiter);
          FOR i IN 1 .. l_string_results.count
@@ -177,7 +177,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
                l_results(l_results.last) := l_string_results(i);
             END IF;
          END LOOP;
-      
+
          --check if we need to append the last line to the next element
          IF l_string_results.count = 1 THEN
             l_has_last_line := FALSE;
@@ -186,7 +186,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
             l_has_last_line := TRUE;
             l_last_line     := l_string_results(l_string_results.count);
          END IF;
-      
+
          l_skip_leading_delimiter := 'Y';
       END LOOP;
       IF l_has_last_line THEN
@@ -200,12 +200,12 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
    FUNCTION get_console_report(i_sourcedata IN t_scope_result_rows) RETURN CLOB IS
       l_report    CLOB;
       l_file_part VARCHAR2(32767);
-   
+
    BEGIN
       dbms_lob.createtemporary(l_report, TRUE);
-   
+
       IF i_sourcedata IS NOT NULL THEN
-      
+
          FOR summary IN (SELECT COUNT(1) total
                                ,object_owner
                          FROM   TABLE(i_sourcedata)
@@ -214,13 +214,13 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
          LOOP
             l_file_part := 'For Schema: ' || summary.object_owner || ' there are :' ||
                            summary.total || ' checkstyle errors' || CHR(10);
-         
+
             dbms_lob.writeappend(l_report, length(l_file_part), l_file_part);
          END LOOP;
-      
+
          l_file_part := CHR(10) || 'Please see details:' || CHR(10);
          dbms_lob.writeappend(l_report, length(l_file_part), l_file_part);
-      
+
          FOR data IN (SELECT *
                       FROM   TABLE(i_sourcedata)
                       ORDER  BY object_owner
@@ -235,19 +235,19 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
                            'Line of Code : ' || data.line || CHR(10) || 'Rule Name : ' ||
                            data.rule_name || CHR(10) || 'Rule Desciption : ' ||
                            data.rule_desc || CHR(10) || CHR(10);
-         
+
             dbms_lob.writeappend(l_report, length(l_file_part), l_file_part);
          END LOOP;
       ELSE
          l_file_part := 'No issues have been found for given checkstyle run';
-      
+
          dbms_lob.writeappend(l_report, length(l_file_part), l_file_part);
-      
+
       END IF;
-   
+
       RETURN l_report;
    END get_console_report;
-   
+
    */
 
    PROCEDURE print_clob_by_line(i_data IN CLOB) IS
@@ -269,9 +269,9 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
       ELSE
          l_name := i_name;
       END IF;
-   
+
       l_ut_name := l_name;
-   
+
       RETURN l_ut_name;
    END precheck_ut_name;
 
@@ -285,13 +285,13 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
       ELSE
          l_name := i_name;
       END IF;
-   
+
       IF i_dup_name > 1 THEN
          l_name := SUBSTR(l_name, 1, 28) || TRIM(BOTH ' ' FROM TO_CHAR(i_dup_name, 'XX'));
       END IF;
-   
+
       l_ut_name := GC_UT_PREFIX || l_name;
-   
+
       RETURN l_ut_name;
    END;
 
@@ -309,17 +309,17 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
       RETURN VARCHAR2 IS
       l_outputline VARCHAR2(4000);
    BEGIN
-   
+
       -- %suitepath(alltests)
-      -- %displayname(CBS Services API)  
+      -- %displayname(CBS Services API)
       -- %suite(ut_dal_cbsserv_api)
-   
+
       l_outputline := G_TAB || '--%suitepath(' || i_suitepath || ')' || CHR(10);
       l_outputline := l_outputline || G_TAB || '--%suite(' ||
                       lower(i_methodname.ut_method_name) || ')' || CHR(10);
       l_outputline := l_outputline || G_TAB || '--%displayname(Sample Display Name) ' ||
                       CHR(10) || CHR(10);
-   
+
       RETURN l_outputline;
    END get_ut_specs_annotations;
 
@@ -329,10 +329,10 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
       l_outputline := G_TAB || '--%test(' || lower(i_methodname.ut_method_name) || ')' ||
                       CHR(10);
       l_outputline := l_outputline || G_TAB || '--%disabled' || CHR(10);
-   
+
       l_outputline := l_outputline || G_TAB || '--%displayname(' ||
                       lower(i_methodname.ut_method_name) || ')' || CHR(10);
-   
+
       RETURN l_outputline;
    END get_ut_package_annotations;
 
@@ -347,7 +347,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
    FUNCTION get_ut_package_body(i_methodname IN t_gen_result) RETURN VARCHAR2 IS
       l_outputline VARCHAR2(4000);
    BEGIN
-   
+
       l_outputline := CHR(10) || 'CREATE OR REPLACE PACKAGE BODY ' ||
                       UPPER(i_methodname.test_owner) || '.' ||
                       UPPER(i_methodname.ut_method_name) || ' IS' || CHR(10) || CHR(10);
@@ -386,7 +386,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GEN_HELPER IS
                       '*******************************************************/' ||
                       CHR(10) || CHR(10);
       RETURN l_outputline;
-   
+
    END get_ut_package_testinfo;
 
    FUNCTION get_ut_package_emptybody(i_methodname IN t_gen_result) RETURN VARCHAR2 IS

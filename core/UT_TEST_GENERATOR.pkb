@@ -1,6 +1,8 @@
+CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
+
 /*
- Copyright 2018 Lukasz Wasylow  
-  
+ Copyright 2018 Lukasz Wasylow
+
  Licensed under the Apache License, Version 2.0 (the "License"):
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
@@ -12,9 +14,7 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
- */  
- 
-CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
+ */
 
    g_test_owner     VARCHAR2(32);
    g_current_schema VARCHAR2(30) := sys_context('userenv', 'current_schema');
@@ -34,7 +34,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
    END set_options;
 
    PROCEDURE set_module(i_modulename IN VARCHAR2 DEFAULT 'PLSCOPE') IS
-   
+
    BEGIN
       dbms_application_info.set_module(module_name => i_modulename, action_name => NULL);
    END set_module;
@@ -43,10 +43,10 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
       l_excluded_objects t_objectslist := t_objectslist();
    BEGIN
       dbms_application_info.set_action(action_name => 'Exclude Errors');
-   
+
       l_excluded_objects.extend;
       l_excluded_objects(l_excluded_objects.LAST) := init_self;
-   
+
       RETURN l_excluded_objects;
    END;
    --Return list of all objects to be tested
@@ -54,7 +54,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                            ,i_objects IN varchar2_tab) RETURN t_objectslist IS
       l_objectlist    t_objectslist;
       l_excluded_list t_objectslist := exclude_framework_objects;
-   
+
       CURSOR c_schemas_object IS
          SELECT t_objectlist(o.object_name, o.owner, o.object_type)
          FROM   all_objects o
@@ -78,7 +78,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                       ELSE
                        2
                    END;
-   
+
       CURSOR c_schemas IS
          SELECT t_objectlist(o.object_name, o.owner, o.object_type)
          FROM   all_objects o
@@ -102,7 +102,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                    END;
    BEGIN
       dbms_application_info.set_action(action_name => 'Gather Object List');
-   
+
       IF i_objects.COUNT = 0 THEN
          OPEN c_schemas;
          FETCH c_schemas BULK COLLECT
@@ -114,21 +114,24 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
             INTO l_objectlist;
          CLOSE c_schemas_object;
       END IF;
-   
+
       RETURN l_objectlist;
    END get_object_list;
 
    PROCEDURE print_report(i_report_data IN CLOB) AS
-   
+
    BEGIN
       ut_test_gen_helper.print_clob_by_line(i_data => i_report_data);
    END print_report;
 
    FUNCTION investigate_objects(i_path IN t_objectslist) RETURN t_gen_results IS
-   
-      CURSOR c_specs_lookup IS
-         SELECT t_gen_result(object_name, owner, object_type, NAME, TYPE, usage_id,
-                             usage_context_id, g_test_owner,
+
+      c_specs_lookup sys_refcursor;
+      l_resulttab t_gen_results;
+
+   BEGIN
+      OPEN c_specs_lookup FOR q'[SELECT t_gen_result(object_name, owner, object_type, NAME, TYPE, usage_id,
+                             usage_context_id, :g_test_owner,
                              ut_test_gen_helper.get_ut_compliant_name(i_name => NAME,
                                                                        i_dup_name => dup_ut_name))
          FROM   (SELECT i.object_name
@@ -140,7 +143,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                        ,i.usage_context_id
                        ,ROW_NUMBER() OVER(PARTITION BY object_name, owner, object_type, ut_test_gen_helper.precheck_ut_name(i_name => i.name) ORDER BY i.name) dup_ut_name
                  FROM   dba_identifiers i
-                       ,TABLE(i_path) p
+                       ,TABLE(:i_path) p
                  WHERE  i.owner = p.objectowner
                  AND    object_name = p.objectname
                  AND    object_type = p.objecttype
@@ -153,16 +156,11 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                                '1'
                               ELSE
                                '2'
-                           END);
-   
-      l_resulttab t_gen_results;
-   
-   BEGIN
-      OPEN c_specs_lookup;
+                           END)]' using g_test_owner, i_path;
       FETCH c_specs_lookup BULK COLLECT
          INTO l_resulttab;
       CLOSE c_specs_lookup;
-   
+
       RETURN l_resulttab;
    END investigate_objects;
 
@@ -170,13 +168,13 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                         ,o_spec         OUT NOCOPY CLOB) IS
       l_line VARCHAR2(4000);
    BEGIN
-   
+
       IF (i_objectdetail.TYPE = 'PACKAGE' AND i_objectdetail.objecttype = 'PACKAGE') THEN
          l_line := ut_test_gen_helper.get_ut_package_specs(i_methodname => i_objectdetail);
          ut_test_gen_helper.append_to_clob(i_src_clob => o_spec, i_new_data => l_line);
          l_line := ut_test_gen_helper.get_ut_specs_annotations(i_methodname => i_objectdetail);
          ut_test_gen_helper.append_to_clob(i_src_clob => o_spec, i_new_data => l_line);
-      
+
       ELSIF (i_objectdetail.TYPE = 'FUNCTION' AND i_objectdetail.objecttype = 'FUNCTION') OR
             (i_objectdetail.TYPE = 'PROCEDURE' AND
             i_objectdetail.objecttype = 'PROCEDURE') THEN
@@ -204,7 +202,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                        ,o_spec         OUT NOCOPY CLOB) IS
       l_line VARCHAR2(4000);
    BEGIN
-   
+
       IF i_objectdetail.TYPE = 'PACKAGE' THEN
          l_line := ut_test_gen_helper.get_ut_package_body(i_methodname => i_objectdetail);
          ut_test_gen_helper.append_to_clob(i_src_clob => o_spec, i_new_data => l_line);
@@ -256,14 +254,14 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
          WHERE  m.objectname = i_object.objectname
          AND    m.objectowner = i_object.objectowner
          AND    m.objecttype = i_object.objecttype;
-   
+
       l_duplicate_helper ut_test_gen_helper.t_duplicatehelper;
    BEGIN
-   
+
       --For each object generate package specs
       FOR objects IN c_methods
       LOOP
-      
+
          build_specs(i_objectdetail => objects.methodnames, o_spec => l_tmppackage);
          ut_test_gen_helper.append_to_clob(i_src_clob => l_package,
                                            i_new_data => l_tmppackage);
@@ -271,7 +269,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
       --Close Specs
       ut_test_gen_helper.append_to_clob(i_src_clob => l_package,
                                         i_new_data => 'END;' || CHR(10) || '/' || CHR(10));
-   
+
       FOR objects IN c_methods
       LOOP
          build_body(i_objectdetail => objects.methodnames, o_spec => l_tmppackage);
@@ -281,9 +279,9 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
       --Close Specs
       ut_test_gen_helper.append_to_clob(i_src_clob => l_package,
                                         i_new_data => 'END;' || CHR(10) || '/' || CHR(10));
-   
+
       o_results := l_package;
-   
+
    END;
 
    PROCEDURE generate_tests(i_schemas   IN varchar2_tab
@@ -291,7 +289,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
                            ,i_testowner IN VARCHAR2 DEFAULT NULL
                            ,o_results   OUT NOCOPY CLOB) IS
       PRAGMA AUTONOMOUS_TRANSACTION;
-   
+
       l_path            t_objectslist := get_object_list(i_schemas => i_schemas,
                                                          i_objects => i_objects);
       l_schema_path     t_objectslist := t_objectslist();
@@ -301,7 +299,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
    BEGIN
       set_options(i_testowner => i_testowner);
       dbms_application_info.set_action(action_name => 'Recompile Scope');
-   
+
       IF i_objects.COUNT = 0 THEN
          --Workaround issue when schema compiled is schema where package is being executed
          --that creates a lock
@@ -318,10 +316,10 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
       ELSE
          ut_test_gen_helper.recompile_with_scope_objects(i_run_paths => l_path);
       END IF;
-   
-      --Investiage DBA IDENTIFIERS to pull some basic info to build   
+
+      --Investiage DBA IDENTIFIERS to pull some basic info to build
       l_identifiedtests := investigate_objects(i_path => l_path);
-   
+
       --Generate a package details passing options
       FOR objects IN 1 .. l_path.COUNT
       LOOP
@@ -330,11 +328,11 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
          ut_test_gen_helper.append_to_clob(i_src_clob => l_outresults,
                                            i_new_data => l_tmpresults);
       END LOOP;
-   
+
       l_path.DELETE;
-   
+
       o_results := l_outresults;
-   
+
    END generate_tests;
 
    PROCEDURE generate_with_print(i_schemas   IN varchar2_tab
@@ -345,13 +343,13 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
       generate_tests(i_schemas => i_schemas, i_objects => i_objects,
                      o_results => l_result_set, i_testowner => i_testowner);
       print_report(i_report_data => l_result_set);
-   
+
    END generate_with_print;
 
    PROCEDURE run(i_schema    IN VARCHAR2 DEFAULT NULL
                 ,i_object    IN VARCHAR2
                 ,i_testowner IN VARCHAR2 DEFAULT NULL) IS
-   
+
       l_schema  varchar2_tab := varchar2_tab(coalesce(i_schema, g_current_schema));
       l_objects varchar2_tab := varchar2_tab(i_object);
    BEGIN
@@ -371,9 +369,9 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
    BEGIN
       generate_tests(i_schemas => l_schema, i_objects => l_objects,
                      o_results => l_result_set, i_testowner => i_testowner);
-   
+
       l_returntype := ut_test_gen_helper.clob_to_table(i_clob => l_result_set);
-   
+
       FOR codelines IN 1 .. l_returntype.COUNT
       LOOP
          PIPE ROW(l_returntype(codelines));
@@ -382,7 +380,7 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
 
    PROCEDURE run(i_schema    IN VARCHAR2 DEFAULT NULL
                 ,i_testowner IN VARCHAR2 DEFAULT NULL) IS
-   
+
       l_schema  varchar2_tab := varchar2_tab(coalesce(i_schema, g_current_schema));
       l_objects varchar2_tab := varchar2_tab();
    BEGIN
@@ -401,9 +399,9 @@ CREATE OR REPLACE PACKAGE BODY UT_TEST_GENERATOR IS
    BEGIN
       generate_tests(i_schemas => l_schema, i_objects => l_objects,
                      o_results => l_result_set, i_testowner => i_testowner);
-   
+
       l_returntype := ut_test_gen_helper.clob_to_table(i_clob => l_result_set);
-   
+
       FOR codelines IN 1 .. l_returntype.COUNT
       LOOP
          PIPE ROW(l_returntype(codelines));
